@@ -21,7 +21,15 @@ def fetch_event_data(session, start_date, end_date):
     }
     resp = session.get(f"{BASE_URL}/MountainHutInfolists/GetEventData", params=params)
     resp.raise_for_status()
-    return json.loads(resp.text)
+    raw_json = resp.text.strip()
+    try:
+        data = json.loads(raw_json)
+        # APIによっては JSON がさらに文字列として返されることがあるので解釈を繰り返す
+        while isinstance(data, str):
+            data = json.loads(data)
+        return data  # ここでようやくリストや辞書になっているはずです
+    except Exception as e:
+        raise RuntimeError(f"JSONの解析に失敗しました: {e}")
 
 def check_availability(data, target_date):
     for row in data:
