@@ -32,11 +32,22 @@ def fetch_event_data(session, start_date, end_date):
     except Exception as e:
         raise RuntimeError(f"JSONの解析に失敗しました: {e}")
 
+import datetime
+
 def check_availability(data, target_date):
     for row in data:
-        service_date = datetime.date.fromisoformat(row["serviceDate"].replace("/", "-"))
+        raw_date = row.get("serviceDate")
+        if not raw_date:
+            continue
+        # 「2025/09/28T00:00:00」のようなパターンに対応するため、Tで分割し、/→-に統一
+        date_str = raw_date.split("T")[0].replace("/", "-")
+        try:
+            service_date = datetime.date.fromisoformat(date_str)
+        except ValueError:
+            # 念のため datetime.fromisoformat を使うと時間付きでも処理できる
+            service_date = datetime.datetime.fromisoformat(date_str).date()
         if service_date == target_date:
-            return "空きあり" if row["reservationCount"] > 0 else "満室"
+            return "空きあり" if row.get("reservationCount", 0) > 0 else "満室"
     return "データなし"
 
 def send_notification(status):
